@@ -1,0 +1,33 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Cursor Rules for "literature" codebase
+
+## 1. Navigation
+- `root/`: project root; contains `client/`, `server/`, `shared/`
+- `client/src/pages/`: entry points for React routes (landing, lobby, game)
+- `client/src/features/`: per‐feature UI & hooks
+- `server/src/`: backend logic: controllers, sockets, services
+- Shared TS types live in `shared/types/` and imported by both sides.
+
+## 2. File Naming & Conventions
+- React components in `PascalCase.tsx`; hooks as `useXxx.ts`
+- State slices in `*.slice.ts`; services in `*.service.ts`
+- Socket handlers named `.socket.ts`; REST handlers named `.controller.ts`
+- Constants & enums in `*.constants.ts`
+
+## 3. Jump‐to & Context
+- Always open <file> at function/component definition when given a symbol.
+- When editing a function or method, load at least ±30 lines around signature.
+
+## 4. Editing
+- Wrap new code in appropriate feature folder.
+- Adhere strictly to existing TS types; update shared types first if new shape needed.
+- Avoid changing lines outside requested feature unless bug‐fix.
+
+## 5. Commits
+- Make small, focused changes per commit; reference issue or TODO in commit message.
+
+
