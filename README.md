@@ -73,7 +73,7 @@ npm start
 - Clubs (high): 7-K of clubs
 - Diamonds (low): A-6 of diamonds
 - Diamonds (high): 7-K of diamonds
-- Jokers: 2 jokers
+- 8s & Jokers: 2 jokers, 8s of all suits
 
 ### Gameplay
 1. Players take turns asking opponents for cards
