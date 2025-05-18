@@ -30,6 +30,7 @@ export interface GameState {
   } | null
   team1Sets: Set[]
   team2Sets: Set[]
+  turnHistory: string[]
 }
 
 // Socket.IO event types

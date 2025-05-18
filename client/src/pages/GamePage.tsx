@@ -53,7 +53,7 @@ export default function GamePage() {
     }) => {
       setGameState(data.gameState)
       setTimeout(() => {
-        alert(`${data.winner === "team1" ? "Team 1" : "Team 2"} wins!`)
+        alert(`${data.winner === "team1" ? "Blue Team" : "Red Team"} wins!`)
       }, 500)
     }
 
@@ -71,7 +71,7 @@ export default function GamePage() {
   }
 
   const handlePlayerClick = (player: GamePlayer) => {
-    if (gameState?.currentTurn?.playerId === socket.id && player.id !== socket.id) {
+    if (gameState?.currentTurn?.playerId === socket.id && player.id !== socket.id && player.team !== myTeam) {
       setSelectedPlayer(player)
       setAskModalOpen(true)
     }
@@ -138,6 +138,9 @@ export default function GamePage() {
     (myTeam === "team1" && gameState.team1Sets.length > gameState.team2Sets.length) ||
     (myTeam === "team2" && gameState.team2Sets.length > gameState.team1Sets.length)
 
+  const BLUE_TEAM_NAME = "Blue Team";
+  const RED_TEAM_NAME = "Red Team";
+
   // Sort other players so teammates are 2nd and 4th in the arc
   const otherPlayers = gameState.players.filter((p) => p.id !== socket.id)
   const teammates = otherPlayers.filter((p) => p.team === myTeam)
@@ -189,36 +192,66 @@ export default function GamePage() {
             arc={210}
             onClick={() => handlePlayerClick(player)}
             isActive={gameState.currentTurn?.playerId === player.id}
+            myTeam={myTeam}
+            isMyTurn={isMyTurn}
           />
         ))}
 
         {/* Center - Captured sets */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-8">
-          <CapturedSets sets={gameState.team1Sets} teamName="Team 1" isMyTeam={myTeam === "team1"} />
-          <CapturedSets sets={gameState.team2Sets} teamName="Team 2" isMyTeam={myTeam === "team2"} />
+          {myTeam === "team1" ? (
+            <>
+              <CapturedSets
+                sets={gameState.team1Sets}
+                teamName={BLUE_TEAM_NAME}
+                teamId="team1"
+              />
+              <CapturedSets
+                sets={gameState.team2Sets}
+                teamName={RED_TEAM_NAME}
+                teamId="team2"
+              />
+            </>
+          ) : (
+            <>
+              <CapturedSets
+                sets={gameState.team2Sets}
+                teamName={RED_TEAM_NAME}
+                teamId="team2"
+              />
+              <CapturedSets
+                sets={gameState.team1Sets}
+                teamName={BLUE_TEAM_NAME}
+                teamId="team1"
+              />
+            </>
+          )}
         </div>
 
-        {/* Current player's hand */}
-        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex flex-wrap justify-center gap-2 p-4 bg-white/80 rounded-t-lg shadow-lg">
-          {currentPlayer?.cards
-            .sort((a, b) => {
-              // Sort by set, then by value
-              if (a.set !== b.set) return a.set.localeCompare(b.set)
-              return a.value.localeCompare(b.value)
-            })
-            .map((card) => (
-              <CardComponent
-                key={`${card.set}-${card.value}`}
-                card={card}
-                onClick={() => handleCardClick(card)}
-                selected={selectedCard?.value === card.value && selectedCard?.set === card.set}
-                disabled={!isMyTurn}
-              />
-            ))}
-        </div>
-        {/* Show own name below cards */}
-        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 mb-2 text-lg font-semibold text-gray-700">
-          {currentPlayer?.name}
+        {/* Container for Current player's hand and name */}
+        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex flex-col items-center w-full px-4">
+          {/* Current player's hand */}
+          <div className="flex flex-wrap justify-center gap-2 p-4 bg-white/80 rounded-t-lg shadow-lg">
+            {currentPlayer?.cards
+              .sort((a, b) => {
+                // Sort by set, then by value
+                if (a.set !== b.set) return a.set.localeCompare(b.set)
+                return a.value.localeCompare(b.value)
+              })
+              .map((card) => (
+                <CardComponent
+                  key={`${card.set}-${card.value}`}
+                  card={card}
+                  onClick={() => handleCardClick(card)}
+                  selected={selectedCard?.value === card.value && selectedCard?.set === card.set}
+                  disabled={!isMyTurn}
+                />
+              ))}
+          </div>
+          {/* Show own name below cards */}
+          <div className="py-2 text-lg font-semibold text-gray-700 bg-white/80 w-full text-center rounded-b-lg shadow-lg">
+            {currentPlayer?.name}
+          </div>
         </div>
       </div>
 
@@ -258,7 +291,7 @@ export default function GamePage() {
           <div className="bg-white p-8 rounded-lg text-center">
             <h2 className="text-4xl font-bold mb-4">{didIWin ? "You Win!" : "You Lose!"}</h2>
             <p className="mb-6">
-              Team 1: {gameState.team1Sets.length} sets | Team 2: {gameState.team2Sets.length} sets
+              {BLUE_TEAM_NAME}: {gameState.team1Sets.length} sets | {RED_TEAM_NAME}: {gameState.team2Sets.length} sets
             </p>
             <button
               onClick={handlePlayAgain}

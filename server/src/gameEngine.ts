@@ -4,9 +4,25 @@ import type { Card, GamePlayer, GameState, Player, Set, ServerToClientEvents, Cl
 export class GameEngine {
   private games: Record<string, GameState> = {}
   private io: Server<ClientToServerEvents, ServerToClientEvents>
+  private allDeclaredSetNames: string[] = [
+    "spades-low", "spades-high", "hearts-low", "hearts-high",
+    "clubs-low", "clubs-high", "diamonds-low", "diamonds-high",
+    "8s_and_jokers"
+  ];
 
   constructor(io: Server<ClientToServerEvents, ServerToClientEvents>) {
     this.io = io
+  }
+
+  // Added this new helper method
+  private getAskableSetForCard(card: Card): string | null {
+    for (const setName of this.allDeclaredSetNames) {
+      const cardsInSet = this.getSetCardsDefinition(setName);
+      if (cardsInSet && cardsInSet.some(c => c.set === card.set && c.value === card.value)) {
+        return setName;
+      }
+    }
+    return null; 
   }
 
   // Create a new game
@@ -44,6 +60,7 @@ export class GameEngine {
       },
       team1Sets: [],
       team2Sets: [],
+      turnHistory: [], // Initialize turn history
     }
 
     // Broadcast initial game state to all players
@@ -173,17 +190,35 @@ export class GameEngine {
       }
     }
 
-    // Check if asking player has at least one card from the same set
-    const hasCardFromSet = askingPlayer.cards.some((c) => c.set === card.set)
-    if (!hasCardFromSet) {
+    // --- NEW LOGIC FOR CHECKING IF PLAYER HAS A CARD FROM THE SAME ASKABLE SET ---
+    const requestedCardAskableSet = this.getAskableSetForCard(card);
+    if (!requestedCardAskableSet) {
+      // This case should ideally not be reached if client sends valid cards
       return {
         success: false,
-        error: "You must have at least one card from the same set to ask",
+        error: "The requested card does not belong to a recognized game set.",
         cardFound: false,
         askingPlayerName: askingPlayer.name,
         targetPlayerName: targetPlayer.name,
-      }
+      };
     }
+
+    const playerHasCardFromSameAskableSet = askingPlayer.cards.some(
+      (cardInHand) => this.getAskableSetForCard(cardInHand) === requestedCardAskableSet
+    );
+
+    if (!playerHasCardFromSameAskableSet) {
+      // Format the set name for better readability in the error message
+      const formattedSetName = requestedCardAskableSet.replace(/_/g, " ").replace(/-/g, " ").replace(/\b(\w)/g, c => c.toUpperCase());
+      return {
+        success: false,
+        error: `You must possess a card from the '${formattedSetName}' set to ask for another card from it.`,
+        cardFound: false,
+        askingPlayerName: askingPlayer.name,
+        targetPlayerName: targetPlayer.name,
+      };
+    }
+    // --- END OF NEW LOGIC ---
 
     // Check if asking player already has the card
     const alreadyHasCard = askingPlayer.cards.some((c) => c.set === card.set && c.value === card.value)
@@ -201,8 +236,15 @@ export class GameEngine {
     const cardIndex = targetPlayer.cards.findIndex((c) => c.set === card.set && c.value === card.value)
 
     if (cardIndex === -1) {
-      // Card not found, move to next player's turn
-      this.nextTurn(roomCode)
+      // Card not found, turn goes to the target player
+      if (gameState.currentTurn) {
+        gameState.turnHistory.push(gameState.currentTurn.playerId);
+      }
+      // Set turn to the target player
+      gameState.currentTurn = {
+        playerId: targetPlayer.id,
+        playerName: targetPlayer.name,
+      };
 
       return {
         success: true,
@@ -231,8 +273,8 @@ export class GameEngine {
   declareSet(
     roomCode: string,
     declaringPlayerId: string,
-    setName: string,
-    declarations: Record<string, string[]>,
+    setName: string, // e.g., "spades-high", "8s_and_jokers"
+    declarations: Record<string, string[]>, // e.g., { "playerId1": ["9S", "TS"], "playerId2": ["JS", "QS", "KS", "AS"] }
   ): {
     success: boolean
     error?: string
@@ -241,186 +283,236 @@ export class GameEngine {
     team: "team1" | "team2"
   } {
     if (!this.games[roomCode]) {
-      return {
-        success: false,
-        error: "Game does not exist",
-        correct: false,
-        playerName: "",
-        team: "team1",
-      }
+      return { success: false, error: "Game does not exist", correct: false, playerName: "", team: "team1" };
     }
 
-    const gameState = this.games[roomCode]
+    const gameState = this.games[roomCode];
+    const declaringPlayer = gameState.players.find((p) => p.id === declaringPlayerId);
 
-    // Check if it's the declaring player's turn
-    if (gameState.currentTurn?.playerId !== declaringPlayerId) {
-      return {
-        success: false,
-        error: "Not your turn",
-        correct: false,
-        playerName: "",
-        team: "team1",
-      }
-    }
-
-    // Get declaring player
-    const declaringPlayer = gameState.players.find((p) => p.id === declaringPlayerId)
     if (!declaringPlayer) {
-      return {
-        success: false,
-        error: "Declaring player not found",
-        correct: false,
-        playerName: "",
-        team: "team1",
+      return { success: false, error: "Declaring player not found", correct: false, playerName: "", team: "team1" };
+    }
+
+    if (gameState.currentTurn?.playerId !== declaringPlayerId) {
+      return { success: false, error: "Not your turn", correct: false, playerName: declaringPlayer.name, team: declaringPlayer.team };
+    }
+
+    const theoreticalSetCards = this.getSetCardsDefinition(setName);
+    if (!theoreticalSetCards) {
+      return { success: false, error: "Invalid set name", correct: false, playerName: declaringPlayer.name, team: declaringPlayer.team };
+    }
+
+    let isCorrect = true;
+    const cardsSuccessfullyClaimed: Card[] = []; // Keep track of cards confirmed by the declaration
+
+    // --- Validation Phase ---
+    const allDeclaredCardValuesWithPlayer: { player: GamePlayer, cardValue: string, theoreticalCardMatch?: Card }[] = [];
+    
+    for (const [playerId, claimedValues] of Object.entries(declarations)) {
+      const player = gameState.players.find((p) => p.id === playerId);
+      if (!player || player.team !== declaringPlayer.team) {
+        isCorrect = false; // Declared player not found or not on the same team
+        break;
+      }
+      for (const claimedValue of claimedValues) {
+        allDeclaredCardValuesWithPlayer.push({ player, cardValue: claimedValue });
       }
     }
 
-    // Get all cards in the set
-    const setCards = this.getSetCards(setName)
-    if (!setCards) {
-      return {
-        success: false,
-        error: "Invalid set name",
-        correct: false,
-        playerName: declaringPlayer.name,
-        team: declaringPlayer.team,
-      }
-    }
-
-    // Check if all cards in the set are accounted for in the declarations
-    const declaredCards = Object.values(declarations).flat()
-    const isComplete = setCards.every((card) => {
-      // For jokers, we need exactly 2 declarations (could be the same value twice)
-      if (setName === "jokers") {
-        return declaredCards.length === 2
-      }
-      return declaredCards.includes(card.value)
-    })
-
-    if (!isComplete) {
-      return {
-        success: false,
-        error: "Declaration is incomplete",
-        correct: false,
-        playerName: declaringPlayer.name,
-        team: declaringPlayer.team,
-      }
-    }
-
-    // Check if the declaration is correct
-    let isCorrect = true
-
-    // For each player in the declaration, check if they have the assigned cards
-    for (const [playerId, cardValues] of Object.entries(declarations)) {
-      const player = gameState.players.find((p) => p.id === playerId)
-
-      if (!player) {
-        isCorrect = false
-        break
-      }
-
-      // Check if player is on the same team
-      if (player.team !== declaringPlayer.team) {
-        return {
-          success: false,
-          error: "Can only declare cards for players on your team",
-          correct: false,
-          playerName: declaringPlayer.name,
-          team: declaringPlayer.team,
-        }
-      }
-
-      // Check if player has all the assigned cards
-      for (const value of cardValues) {
-        const hasCard = player.cards.some(
-          (c) => c.set === (setName === "jokers" ? "jokers" : setName.split("-")[0]) && c.value === value,
-        )
-
-        if (!hasCard) {
-          isCorrect = false
-          break
-        }
-      }
-
-      if (!isCorrect) break
-    }
-
-    // Create the set object
-    const set: Set = {
-      name: setName,
-      cards: setCards,
-    }
-
-    // Award the set to the appropriate team
     if (isCorrect) {
-      // Remove the cards from the players
-      for (const [playerId, cardValues] of Object.entries(declarations)) {
-        const player = gameState.players.find((p) => p.id === playerId)!
+      // Check 1: Each claimed card must exist in the player's hand and be part of the theoretical set
+      for (const declaredItem of allDeclaredCardValuesWithPlayer) {
+        const { player, cardValue } = declaredItem;
+        
+        let matchedTheoreticalCard: Card | undefined = undefined;
+        if (setName === "8s_and_jokers") {
+          matchedTheoreticalCard = theoreticalSetCards.find(tc => tc.value === cardValue);
+        } else {
+          const suitOfSet = setName.split('-')[0];
+          matchedTheoreticalCard = theoreticalSetCards.find(tc => tc.value === cardValue && tc.set === suitOfSet);
+        }
 
-        for (const value of cardValues) {
-          const cardIndex = player.cards.findIndex(
-            (c) => c.set === (setName === "jokers" ? "jokers" : setName.split("-")[0]) && c.value === value,
-          )
+        if (!matchedTheoreticalCard) {
+          isCorrect = false; // Claimed card value is not part of the theoretical set definition
+          break;
+        }
+        declaredItem.theoreticalCardMatch = matchedTheoreticalCard; // Store for later use/removal
 
-          if (cardIndex !== -1) {
-            player.cards.splice(cardIndex, 1)
-          }
+        const playerHasCard = player.cards.some(
+          (cardInHand) => cardInHand.set === matchedTheoreticalCard!.set && cardInHand.value === matchedTheoreticalCard!.value
+        );
+
+        if (!playerHasCard) {
+          isCorrect = false; // Player does not actually have the claimed card
+          break;
+        }
+        cardsSuccessfullyClaimed.push(matchedTheoreticalCard);
+      }
+    }
+    
+    if (isCorrect) {
+      // Check 2: All cards in the theoretical set must be accounted for by the declaration
+      if (cardsSuccessfullyClaimed.length !== theoreticalSetCards.length) {
+        isCorrect = false; // Not all cards from the set were declared, or too many cards declared
+      } else {
+        // Check for uniqueness of claimed cards (e.g. same card not claimed by two players, or twice by one)
+        const uniqueClaimedCards = new Set(cardsSuccessfullyClaimed.map(c => `${c.set}-${c.value}`));
+        if (uniqueClaimedCards.size !== theoreticalSetCards.length) {
+          isCorrect = false; // Duplicate claims for the same physical card or other mismatch
         }
       }
+    }
 
-      // Add the set to the team's captured sets
+    // --- Outcome Phase ---
+    const setForGame: Set = {
+      name: setName,
+      cards: [...theoreticalSetCards], // Use a copy of theoretical cards for the set object
+    };
+
+    // Remove all cards of the declared set from ALL players' hands, regardless of correctness
+    gameState.players.forEach(player => {
+      player.cards = player.cards.filter(cardInHand => 
+        !theoreticalSetCards.some(theoreticalCard => 
+          theoreticalCard.set === cardInHand.set && theoreticalCard.value === cardInHand.value
+        )
+      );
+    });
+
+    const declarerAfterCardRemoval = gameState.players.find(p => p.id === declaringPlayerId);
+
+    if (isCorrect) {
+      // Award set to declaring team
       if (declaringPlayer.team === "team1") {
-        gameState.team1Sets.push(set)
+        gameState.team1Sets.push(setForGame);
       } else {
-        gameState.team2Sets.push(set)
+        gameState.team2Sets.push(setForGame);
       }
     } else {
-      // If incorrect, award the set to the opposing team
+      // Award set to opposing team
       if (declaringPlayer.team === "team1") {
-        gameState.team2Sets.push(set)
+        gameState.team2Sets.push(setForGame);
       } else {
-        gameState.team1Sets.push(set)
+        gameState.team1Sets.push(setForGame);
       }
     }
-
-    // Move to next player's turn
-    this.nextTurn(roomCode)
+    
+    // Turn logic:
+    // If declarer still has cards, their turn continues.
+    // Otherwise, turn passes to the last player who took a turn and has cards, 
+    // or the next player in sequence if no such prior player exists.
+    if (declarerAfterCardRemoval && declarerAfterCardRemoval.cards.length > 0) {
+      // Declarer has cards, their turn continues.
+      // We record this action in turn history if it's a valid turn.
+      if (gameState.currentTurn && gameState.currentTurn.playerId === declaringPlayerId) {
+        // To avoid duplicate entries if they declare multiple times successfully without cards changing hands for others.
+        // We only add if the history's last entry isn't already this player.
+        // Or, more simply, we can decide to always add, and the "last active player" logic will just find them again.
+        // For now, let's not add to history here, as their turn isn't "passing" yet.
+        // The turn officially passes only when nextTurn or nextTurnOrGoToLastActivePlayer is called.
+      }
+      // Implicitly, currentTurn remains set to declaringPlayer.
+    } else {
+      // Declarer has no cards, or declarer not found (should not happen here).
+      // Add the declarer to history as their turn is now ending.
+      if (gameState.currentTurn && gameState.currentTurn.playerId === declaringPlayerId) {
+         gameState.turnHistory.push(declaringPlayerId);
+      }
+      // Check if game ended before calling nextTurn
+      const gameHasEnded = gameState.team1Sets.length + gameState.team2Sets.length >= 9 || gameState.players.every((p) => p.cards.length === 0);
+      if(!gameHasEnded) {
+        this.nextTurnOrGoToLastActivePlayer(roomCode); // New method to implement
+      } else {
+        gameState.currentTurn = null; // Game ended
+      }
+    }
 
     return {
       success: true,
       correct: isCorrect,
       playerName: declaringPlayer.name,
       team: declaringPlayer.team,
-    }
+    };
   }
 
-  // Move to the next player's turn
-  private nextTurn(roomCode: string): void {
+  // Modified nextTurn to potentially go to the last active player
+  private nextTurnOrGoToLastActivePlayer(roomCode: string): void {
     if (!this.games[roomCode]) {
-      return
+      return;
+    }
+    const gameState = this.games[roomCode];
+    const numPlayers = gameState.players.length;
+
+    if (numPlayers === 0) {
+      gameState.currentTurn = null;
+      return;
     }
 
-    const gameState = this.games[roomCode]
-
-    if (!gameState.currentTurn) {
-      return
+    // Try to find the last player in turnHistory who still has cards
+    if (gameState.turnHistory.length > 0) {
+      for (let i = gameState.turnHistory.length - 1; i >= 0; i--) {
+        const lastPlayerId = gameState.turnHistory[i];
+        const lastPlayer = gameState.players.find(p => p.id === lastPlayerId);
+        if (lastPlayer && lastPlayer.cards.length > 0) {
+          gameState.currentTurn = {
+            playerId: lastPlayer.id,
+            playerName: lastPlayer.name,
+          };
+          // Clear turn history up to this player to prevent cycles if they also run out of cards?
+          // Or perhaps only remove this specific entry after using it?
+          // For now, let's leave history as is. It represents actual sequence of ended turns.
+          return;
+        }
+      }
     }
 
-    // Find the current player's index
-    const currentPlayerIndex = gameState.players.findIndex((p) => p.id === gameState.currentTurn?.playerId)
+    // Fallback: If no suitable player in history, or history is empty,
+    // find the next player in sequence from the current (or last known) player.
+    let currentPlayerIndex = -1;
+    if (gameState.currentTurn) {
+      currentPlayerIndex = gameState.players.findIndex((p) => p.id === gameState.currentTurn!.playerId);
+    } else if (gameState.turnHistory.length > 0) {
+      // If currentTurn became null (e.g. game almost ended), try starting from the very last player in history
+      const lastPlayerIdInHistory = gameState.turnHistory[gameState.turnHistory.length - 1];
+      currentPlayerIndex = gameState.players.findIndex((p) => p.id === lastPlayerIdInHistory);
+    }
+
 
     if (currentPlayerIndex === -1) {
-      return
+        // Still no current player, try first player with cards as an absolute fallback.
+        for (let i = 0; i < numPlayers; i++) {
+            if (gameState.players[i].cards.length > 0) {
+                gameState.currentTurn = {
+                    playerId: gameState.players[i].id,
+                    playerName: gameState.players[i].name,
+                };
+                return;
+            }
+        }
+        gameState.currentTurn = null; // No player with cards found
+        return;
     }
-
-    // Move to the next player
-    const nextPlayerIndex = (currentPlayerIndex + 1) % gameState.players.length
-    const nextPlayer = gameState.players[nextPlayerIndex]
-
-    gameState.currentTurn = {
-      playerId: nextPlayer.id,
-      playerName: nextPlayer.name,
+    
+    // Iterate to find the next player in sequence with cards
+    for (let i = 1; i <= numPlayers; i++) {
+      const nextPlayerIndex = (currentPlayerIndex + i) % numPlayers;
+      const nextPlayer = gameState.players[nextPlayerIndex];
+      if (nextPlayer.cards.length > 0) {
+        gameState.currentTurn = {
+          playerId: nextPlayer.id,
+          playerName: nextPlayer.name,
+        };
+        return;
+      }
     }
+    gameState.currentTurn = null; // No player has cards left.
+  }
+
+  // Original nextTurn method - can be removed or refactored into nextTurnOrGoToLastActivePlayer
+  private nextTurn(roomCode: string): void {
+    // This method is now effectively replaced by nextTurnOrGoToLastActivePlayer
+    // For safety, it can call the new method, or we can update all call sites.
+    // For now, let's have it call the new one to ensure consistency.
+    this.nextTurnOrGoToLastActivePlayer(roomCode);
   }
 
   // Remove a game
@@ -431,41 +523,53 @@ export class GameEngine {
   // Create a standard deck of cards plus jokers
   private createDeck(): Card[] {
     const suits = ["spades", "hearts", "clubs", "diamonds"]
-    const values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
+    const highValues = ["9", "10", "J", "Q", "K", "A"]
+    const lowValues = ["2", "3", "4", "5", "6", "7"]
+    const eights = ["8"]
+    const jokers = ["RJ", "BJ"] // Red Joker, Black Joker
 
     const deck: Card[] = []
 
-    // Add standard cards
-    for (const suit of suits) {
-      for (const value of values) {
-        deck.push({ set: suit, value })
-      }
-    }
+    suits.forEach((suit) => {
+      highValues.forEach((value) => deck.push({ set: suit, value }))
+      lowValues.forEach((value) => deck.push({ set: suit, value }))
+      eights.forEach((value) => deck.push({ set: suit, value }))
+    })
 
-    // Add jokers
-    deck.push({ set: "jokers", value: "joker" })
-    deck.push({ set: "jokers", value: "joker" })
+    jokers.forEach((value) => deck.push({ set: "jokers", value })) // 'jokers' set for jokers
 
     return deck
   }
 
-  // Get all cards in a set
-  private getSetCards(setName: string): Card[] | null {
-    if (setName === "jokers") {
+  // Renamed to getSetCardsDefinition to be clear it returns the theoretical definition of a set
+  private getSetCardsDefinition(setName: string): Card[] | null {
+    const [type, rangeOrSuit] = setName.split("-") // e.g. "spades-high" or "8s_and_jokers"
+
+    if (setName === "8s_and_jokers") {
       return [
-        { set: "jokers", value: "joker" },
-        { set: "jokers", value: "joker" },
+        { set: "spades", value: "8" }, { set: "hearts", value: "8" },
+        { set: "clubs", value: "8" }, { set: "diamonds", value: "8" },
+        { set: "jokers", value: "RJ" }, { set: "jokers", value: "BJ" },
       ]
     }
 
-    const [suit, range] = setName.split("-")
+    const suit = type
+    const range = rangeOrSuit
+    let values: string[]
 
-    if (!suit || !range) {
-      return null
+    if (range === "low") {
+      values = ["2", "3", "4", "5", "6", "7"]
+    } else if (range === "high") {
+      values = ["9", "10", "J", "Q", "K", "A"]
+    } else {
+      return null // Invalid range
     }
 
-    const values = range === "low" ? ["A", "2", "3", "4", "5", "6"] : ["7", "8", "9", "10", "J", "Q", "K"]
-
+    // Validate suit
+    if (!["spades", "hearts", "clubs", "diamonds"].includes(suit)) {
+        return null; // Invalid suit
+    }
+    
     return values.map((value) => ({ set: suit, value }))
   }
 
