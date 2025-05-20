@@ -5,6 +5,7 @@ interface Lobby {
   adminId: string
   players: string[]
   playerNames: Record<string, string>
+  playerTeams: Record<string, "team1" | "team2" | null>
   gameStarted: boolean
 }
 
@@ -18,6 +19,7 @@ export class LobbyManager {
       adminId,
       players: [adminId],
       playerNames: { [adminId]: adminName },
+      playerTeams: { [adminId]: "team1" },
       gameStarted: false,
     }
   }
@@ -45,6 +47,8 @@ export class LobbyManager {
 
     lobby.players.push(playerId)
     lobby.playerNames[playerId] = playerName
+    const team = lobby.players.length % 2 === 1 ? "team1" : "team2"
+    lobby.playerTeams[playerId] = team
   }
 
   // Remove a player from a lobby
@@ -53,6 +57,7 @@ export class LobbyManager {
 
     lobby.players = lobby.players.filter((id) => id !== playerId)
     delete lobby.playerNames[playerId]
+    delete lobby.playerTeams[playerId]
 
     // If no players left, remove the lobby
     if (lobby.players.length === 0) {
@@ -68,6 +73,7 @@ export class LobbyManager {
       id: playerId,
       name: lobby.playerNames[playerId],
       isAdmin: playerId === lobby.adminId,
+      team: lobby.playerTeams[playerId] || null,
     }))
   }
 
@@ -80,6 +86,17 @@ export class LobbyManager {
     }
 
     lobby.adminId = newAdminId
+  }
+
+  // Assign a player to a specific team
+  assignPlayerTeam(roomCode: string, playerId: string, team: "team1" | "team2"): void {
+    const lobby = this.getLobby(roomCode)
+
+    if (!lobby.players.includes(playerId)) {
+      throw new Error(`Player ${playerId} is not in lobby ${roomCode}`)
+    }
+
+    lobby.playerTeams[playerId] = team
   }
 
   // Start a game in a lobby

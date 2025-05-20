@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useGameStore } from "../store/gameStore"
 import { socket } from "../socket"
@@ -12,7 +12,14 @@ export default function LandingPage() {
   const [roomCode, setRoomCode] = useState("")
   const [activeTab, setActiveTab] = useState<"join" | "create">("join")
   const navigate = useNavigate()
-  const { setPlayerName } = useGameStore()
+  const { setPlayerName, kickedFromLobbyMessage, setKickedFromLobbyMessage } = useGameStore()
+
+  useEffect(() => {
+    if (kickedFromLobbyMessage) {
+      alert(kickedFromLobbyMessage)
+      setKickedFromLobbyMessage(null)
+    }
+  }, [kickedFromLobbyMessage, setKickedFromLobbyMessage])
 
   const handleJoinGame = (e: React.FormEvent) => {
     e.preventDefault()

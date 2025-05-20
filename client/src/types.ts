@@ -4,6 +4,7 @@ export interface Player {
   id: string
   name: string
   isAdmin: boolean
+  team: "team1" | "team2" | null
 }
 
 export interface Card {

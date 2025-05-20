@@ -27,14 +27,14 @@ export class GameEngine {
 
   // Create a new game
   createGame(roomCode: string, players: Player[]): void {
-    // Shuffle players for random seating and team assignment
-    const shuffledPlayers = this.shuffleArray([...players])
+    // Players are already in their assigned teams from the lobby.
+    // We can shuffle within teams for seating if desired, or just use the order they are in.
+    // For now, let's maintain the order from the lobby for simplicity, but ensure cards are dealt correctly.
 
-    // Create game players with teams (alternating)
-    const gamePlayers: GamePlayer[] = shuffledPlayers.map((player, index) => ({
+    const gamePlayers: GamePlayer[] = players.map(player => ({
       id: player.id,
       name: player.name,
-      team: index % 2 === 0 ? "team1" : "team2",
+      team: player.team || (players.indexOf(player) % 2 === 0 ? "team1" : "team2"), // Use existing team, fallback if null for some reason
       cards: [],
     }))
 

@@ -3,6 +3,7 @@ export interface Player {
   id: string
   name: string
   isAdmin: boolean
+  team: "team1" | "team2" | null
 }
 
 export interface Card {
@@ -39,6 +40,7 @@ export interface ServerToClientEvents {
   "lobby:playerKicked": (data: { players: Player[] }) => void
   "lobby:kicked": (data: { roomCode: string }) => void
   "lobby:gameStarted": () => void
+  "lobby:teamUpdate": (data: { players: Player[] }) => void
   "game:stateUpdate": (data: { gameState: GameState }) => void
   "game:askSuccess": (data: {
     askingPlayer: string
@@ -111,6 +113,10 @@ export interface ClientToServerEvents {
       declarations: Record<string, string[]>
     },
     callback: (response: { success: boolean; error?: string }) => void,
+  ) => void
+  "lobby:assignTeam": (
+    data: { roomCode: string; playerId: string; team: "team1" | "team2" },
+    callback: (response: { success: boolean; error?: string }) => void
   ) => void
 }
 

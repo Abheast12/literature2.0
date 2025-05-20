@@ -166,6 +166,34 @@ io.on("connection", (socket) => {
     }
   })
 
+  socket.on("lobby:assignTeam", (data, callback) => {
+    try {
+      const { roomCode, playerId, team } = data
+
+      if (!lobbyManager.lobbyExists(roomCode)) {
+        return callback({ success: false, error: "Room does not exist" })
+      }
+
+      const lobby = lobbyManager.getLobby(roomCode)
+
+      if (lobby.adminId !== socket.id) {
+        return callback({ success: false, error: "Only admin can assign teams" })
+      }
+
+      lobbyManager.assignPlayerTeam(roomCode, playerId, team)
+
+      // Notify all players in the lobby about the team change
+      io.to(roomCode).emit("lobby:teamUpdate", {
+        players: lobbyManager.getLobbyPlayers(roomCode),
+      })
+
+      callback({ success: true })
+    } catch (error) {
+      console.error("Error assigning team:", error)
+      callback({ success: false, error: "Failed to assign team" })
+    }
+  })
+
   socket.on("lobby:start", (data, callback) => {
     try {
       const { roomCode } = data
@@ -184,17 +212,27 @@ io.on("connection", (socket) => {
         return callback({ success: false, error: "Need exactly 6 players to start" })
       }
 
+      // Check for 3 players per team
+      const currentPlayers = lobbyManager.getLobbyPlayers(roomCode);
+      const team1Count = currentPlayers.filter(p => p.team === "team1").length;
+      const team2Count = currentPlayers.filter(p => p.team === "team2").length;
+
+      if (team1Count !== 3 || team2Count !== 3) {
+        return callback({ success: false, error: "Each team must have exactly 3 players to start." });
+      }
+
       // Start the game
       lobbyManager.startGame(roomCode)
       
-      // Convert player IDs to Player objects
-      const players: Player[] = lobby.players.map(playerId => ({
-        id: playerId,
-        name: lobby.playerNames[playerId] || 'Unknown Player',
-        isAdmin: playerId === lobby.adminId
+      // Convert player IDs to Player objects, now including team from lobbyManager
+      const playersForGameEngine: Player[] = currentPlayers.map(p => ({ // Renamed to avoid confusion with lobby.players
+        id: p.id,
+        name: p.name,
+        isAdmin: p.isAdmin,
+        team: p.team 
       }))
       
-      gameEngine.createGame(roomCode, players)
+      gameEngine.createGame(roomCode, playersForGameEngine)
 
       // Notify all players
       io.to(roomCode).emit("lobby:gameStarted")
