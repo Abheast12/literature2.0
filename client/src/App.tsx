@@ -1,6 +1,4 @@
-"use client"
-
-import dynamic from 'next/dynamic'
+import React from "react"
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import LandingPage from "./pages/LandingPage"
 import LobbyPage from "./pages/LobbyPage"
@@ -17,9 +15,4 @@ const ClientRouter = () => (
   </Router>
 )
 
-// Use dynamic import with ssr disabled
-const App = dynamic(() => Promise.resolve(ClientRouter), {
-  ssr: false
-})
-
-export default App
+export default ClientRouter
