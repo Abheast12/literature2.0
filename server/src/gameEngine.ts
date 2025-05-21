@@ -235,6 +235,13 @@ export class GameEngine {
     // Check if target player has the card
     const cardIndex = targetPlayer.cards.findIndex((c) => c.set === card.set && c.value === card.value)
 
+    // Update lastAsk regardless of whether the card was found or not
+    gameState.lastAsk = {
+      askingPlayerName: askingPlayer.name,
+      targetPlayerName: targetPlayer.name,
+      card: card,
+    };
+
     if (cardIndex === -1) {
       // Card not found, turn goes to the target player
       if (gameState.currentTurn) {
@@ -302,6 +309,17 @@ export class GameEngine {
       return { success: false, error: "Invalid set name", correct: false, playerName: declaringPlayer.name, team: declaringPlayer.team };
     }
 
+    // Store initial card locations from ALL players for populating DeclarationPopUpDetails
+    const initialCardLocations: Array<{ card: Card; playerName: string; playerId: string }> = [];
+    gameState.players.forEach(p => { // Iterate over ALL players
+      p.cards.forEach(c => {
+        // Check if this card is part of the theoretical set being declared
+        if (theoreticalSetCards.some(tc => tc.set === c.set && tc.value === c.value)) {
+          initialCardLocations.push({ card: { ...c }, playerName: p.name, playerId: p.id });
+        }
+      });
+    });
+
     let isCorrect = true;
     const cardsSuccessfullyClaimed: Card[] = []; // Keep track of cards confirmed by the declaration
 
@@ -366,10 +384,68 @@ export class GameEngine {
     // --- Outcome Phase ---
     const setForGame: Set = {
       name: setName,
-      cards: [...theoreticalSetCards], // Use a copy of theoretical cards for the set object
+      cards: [...theoreticalSetCards], 
     };
 
-    // Remove all cards of the declared set from ALL players' hands, regardless of correctness
+    const declarationPopupDetailsItems: Array<{
+      card: Card;
+      declaredPlayerName?: string;
+      actualPlayerName?: string;
+    }> = theoreticalSetCards.map(tsCard => {
+      let declaredPlayerName: string | undefined = undefined;
+      let actualPlayerName: string | undefined = undefined;
+
+      for (const [pId, declaredCardValues] of Object.entries(declarations)) {
+        const declaredPlayer = gameState.players.find(p => p.id === pId);
+        if (declaredPlayer) {
+          const cardValueToMatch = tsCard.value;
+          if (declaredCardValues.some(val => {
+            if (setName === "8s_and_jokers") { 
+                return val === cardValueToMatch;
+            }
+            if (val === tsCard.value) {
+                 if (tsCard.set === "jokers" && setName === "8s_and_jokers") return true;
+                 const suitOfDeclaredSet = setName.split('-')[0];
+                 if (tsCard.set === suitOfDeclaredSet) return true;
+            }
+            return false;
+          })) {
+            declaredPlayerName = declaredPlayer.name;
+            break; 
+          }
+        }
+      }
+      
+      const actualHolder = initialCardLocations.find(loc => loc.card.set === tsCard.set && loc.card.value === tsCard.value);
+      if (actualHolder) {
+        actualPlayerName = actualHolder.playerName;
+      }
+
+      return {
+        card: tsCard,
+        declaredPlayerName: declaredPlayerName,
+        actualPlayerName: actualPlayerName,
+      };
+    });
+    
+    let awardedTeam: "team1" | "team2";
+    if (isCorrect) {
+      awardedTeam = declaringPlayer.team;
+    } else {
+      awardedTeam = declaringPlayer.team === "team1" ? "team2" : "team1";
+    }
+
+    gameState.lastDeclaration = {
+      id: `${roomCode}-${Date.now()}-${setName}`, // Unique ID for the declaration event
+      declaringPlayerName: declaringPlayer.name,
+      setName: setName,
+      isOverallCorrect: isCorrect,
+      items: declarationPopupDetailsItems,
+      theoreticalCardsInSet: [...theoreticalSetCards],
+      awardedToTeam: awardedTeam,
+    };
+
+    // This must happen AFTER collecting initialCardLocations and AFTER determining actualPlayerName and AFTER setting lastDeclaration
     gameState.players.forEach(player => {
       player.cards = player.cards.filter(cardInHand => 
         !theoreticalSetCards.some(theoreticalCard => 
@@ -377,24 +453,22 @@ export class GameEngine {
         )
       );
     });
-
-    const declarerAfterCardRemoval = gameState.players.find(p => p.id === declaringPlayerId);
-
+    
     if (isCorrect) {
-      // Award set to declaring team
       if (declaringPlayer.team === "team1") {
         gameState.team1Sets.push(setForGame);
       } else {
         gameState.team2Sets.push(setForGame);
       }
     } else {
-      // Award set to opposing team
       if (declaringPlayer.team === "team1") {
         gameState.team2Sets.push(setForGame);
       } else {
         gameState.team1Sets.push(setForGame);
       }
     }
+
+    const declarerAfterCardRemoval = gameState.players.find(p => p.id === declaringPlayerId);
     
     // Turn logic:
     // If declarer still has cards, their turn continues.

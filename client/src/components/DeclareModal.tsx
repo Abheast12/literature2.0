@@ -8,9 +8,10 @@ interface DeclareModalProps {
   onDeclare: (setName: string, declarations: Record<string, string[]>) => void
   players: GamePlayer[]
   myTeamPlayers: GamePlayer[]
+  declaredSets: string[]
 }
 
-export default function DeclareModal({ onClose, onDeclare, players, myTeamPlayers }: DeclareModalProps) {
+export default function DeclareModal({ onClose, onDeclare, players, myTeamPlayers, declaredSets }: DeclareModalProps) {
   const [selectedSet, setSelectedSet] = useState<string>("")
   const [declarations, setDeclarations] = useState<Record<string, string[]>>({})
 
@@ -24,12 +25,14 @@ export default function DeclareModal({ onClose, onDeclare, players, myTeamPlayer
     "clubs-high", // 9-A of clubs
     "diamonds-low", // 2-7 of diamonds
     "diamonds-high", // 9-A of diamonds
-    "8s_and_jokers", // 8s of all suits and 2 jokers
+    "8s-and-jokers", // 8s of all suits and 2 jokers
   ]
+
+  const availableSets = sets.filter(set => !declaredSets.includes(set));
 
   // Get cards for a set
   const getSetCards = (setName: string): { suit: string; values: string[] } => {
-    if (setName === "8s_and_jokers") {
+    if (setName === "8s-and-jokers") {
       return { suit: "mixed", values: ["8S", "8H", "8C", "8D", "RJ", "BJ"] } // Spade 8, Heart 8, Club 8, Diamond 8, Red Joker, Black Joker
     }
 
@@ -66,8 +69,8 @@ export default function DeclareModal({ onClose, onDeclare, players, myTeamPlayer
     const { values } = getSetCards(selectedSet)
     const allAssignedValues = Object.values(declarations).flat()
 
-    // For 8s_and_jokers, we need exactly 6 assignments
-    if (selectedSet === "8s_and_jokers") {
+    // For 8s-and-jokers, we need exactly 6 assignments
+    if (selectedSet === "8s-and-jokers") {
       // Ensure all 6 unique cards are assigned
       return values.every((value) => allAssignedValues.includes(value)) && allAssignedValues.length === values.length;
     }
@@ -98,7 +101,7 @@ export default function DeclareModal({ onClose, onDeclare, players, myTeamPlayer
             }}
           >
             <option value="">Select a set</option>
-            {sets.map((set) => (
+            {availableSets.map((set) => (
               <option key={set} value={set}>
                 {set}
               </option>
@@ -113,7 +116,7 @@ export default function DeclareModal({ onClose, onDeclare, players, myTeamPlayer
               {getSetCards(selectedSet).values.map((value, index) => (
                 <div key={`${value}-${index}`} className="flex items-center gap-2">
                   <div className="w-24 font-medium"> {/* Adjusted width for longer card names like "Red Joker" */}
-                    {selectedSet === "8s_and_jokers" ? value : value}
+                    {selectedSet === "8s-and-jokers" ? value : value}
                   </div>
                   <select
                     className="flex-1 p-2 border rounded-md"

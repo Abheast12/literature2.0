@@ -10,6 +10,7 @@ import CardComponent from "../components/Card"
 import AskModal from "../components/AskModal"
 import DeclareModal from "../components/DeclareModal"
 import CapturedSets from "../components/CapturedSets"
+import DeclarationResultModal from "../components/DeclarationResultModal"
 
 export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>()
@@ -19,6 +20,9 @@ export default function GamePage() {
   const [askModalOpen, setAskModalOpen] = useState(false)
   const [declareModalOpen, setDeclareModalOpen] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<GamePlayer | null>(null)
+  const [cardOrder, setCardOrder] = useState<Card[]>([])
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dismissedDeclarationIds, setDismissedDeclarationIds] = useState<string[]>([])
 
   useEffect(() => {
     if (!playerName) {
@@ -65,6 +69,17 @@ export default function GamePage() {
       socket.off("game:ended", handleGameEnded)
     }
   }, [roomCode, playerName, navigate, setGameState])
+
+  useEffect(() => {
+    if (!gameState) return
+    const player = gameState.players.find((p) => p.id === socket.id)
+    if (!player) return
+    const sorted = [...player.cards].sort((a, b) => {
+      if (a.set !== b.set) return a.set.localeCompare(b.set)
+      return a.value.localeCompare(b.value)
+    })
+    setCardOrder(sorted)
+  }, [gameState])
 
   const handleCardClick = (card: Card) => {
     setSelectedCard(card)
@@ -171,6 +186,65 @@ export default function GamePage() {
     }
   }
 
+  // Handlers for native HTML5 drag-and-drop
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index)
+  }
+
+  const handleDragOverCard = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+  }
+
+  const handleDropCard = (index: number) => {
+    if (draggedIndex === null) return
+    const items = Array.from(cardOrder)
+    const [moved] = items.splice(draggedIndex, 1)
+    items.splice(index, 0, moved)
+    setCardOrder(items)
+    setDraggedIndex(null)
+  }
+
+  const formatCardName = (card: Card): string => {
+    const valueMap: Record<string, string> = {
+      "A": "Ace", "K": "King", "Q": "Queen", "J": "Jack", "10": "10",
+      "9": "9", "8": "8", "7": "7", "6": "6", "5": "5", "4": "4", "3": "3", "2": "2",
+      "RJ": "Red Joker", "BJ": "Black Joker"
+    };
+    const setMap: Record<string, string> = {
+      "spades": "Spades", "hearts": "Hearts", "clubs": "Clubs", "diamonds": "Diamonds"
+    };
+    
+    // Ensure card value gets translated if a mapping exists (e.g., "BJ" to "Black Joker")
+    const cardValue = valueMap[card.value] || card.value;
+
+    // Handle Jokers specifically: they should just return their name (e.g., "Red Joker")
+    // Check card.set by converting to lowercase to handle "jokers" or "Jokers"
+    if (card && card.set && card.set.toLowerCase() === "jokers") {
+      return cardValue; // This should be "Red Joker" or "Black Joker"
+    }
+
+    // For all other cards, format as "Value of Set"
+    const cardSetDisplay = setMap[card.set] || card.set;
+    return `${cardValue} of ${cardSetDisplay}`;
+  };
+
+  const handleCloseDeclarationResult = () => {
+    if (gameState && gameState.lastDeclaration) {
+      // Add the ID to the dismissed list
+      if (gameState.lastDeclaration.id) {
+        setDismissedDeclarationIds(prev => [...prev, gameState.lastDeclaration!.id]);
+      }
+
+      // Also, clear it from the current game state for immediate UI update,
+      // though the main check will be against dismissedDeclarationIds
+      const newState = {
+        ...gameState,
+        lastDeclaration: null, 
+      };
+      setGameState(newState);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-emerald-50 flex flex-col items-center justify-center p-4 relative">
       {/* Turn indicator */}
@@ -231,25 +305,33 @@ export default function GamePage() {
         {/* Container for Current player's hand and name */}
         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex flex-col items-center w-full px-4">
           {/* Current player's hand */}
-          <div className="flex flex-wrap justify-center gap-2 p-4 bg-white/80 rounded-t-lg shadow-lg">
-            {currentPlayer?.cards
-              .sort((a, b) => {
-                // Sort by set, then by value
-                if (a.set !== b.set) return a.set.localeCompare(b.set)
-                return a.value.localeCompare(b.value)
-              })
-              .map((card) => (
+          <div className="flex gap-2 p-4 bg-white/80 rounded-t-lg shadow-lg overflow-x-auto">
+            {cardOrder.map((card, index) => (
+              <div
+                key={`${card.set}-${card.value}-${index}`}
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={handleDragOverCard}
+                onDrop={() => handleDropCard(index)}
+                className="cursor-grab"
+              >
                 <CardComponent
-                  key={`${card.set}-${card.value}`}
                   card={card}
                   onClick={() => handleCardClick(card)}
                   selected={selectedCard?.value === card.value && selectedCard?.set === card.set}
                   disabled={!isMyTurn}
                 />
-              ))}
+              </div>
+            ))}
           </div>
           {/* Show own name below cards */}
-          <div className="py-2 text-lg font-semibold text-gray-700 bg-white/80 w-full text-center rounded-b-lg shadow-lg">
+          <div
+            className={`py-2 text-lg font-semibold w-full text-center rounded-b-lg shadow-lg border-2 ${
+              myTeam === "team1"
+                ? "bg-blue-100 border-blue-400 text-black"
+                : "bg-red-100 border-red-400 text-black"
+            }`}
+          >
             {currentPlayer?.name}
           </div>
         </div>
@@ -282,6 +364,7 @@ export default function GamePage() {
           onDeclare={handleDeclare}
           players={gameState.players}
           myTeamPlayers={gameState.players.filter((p) => p.team === myTeam)}
+          declaredSets={[...gameState.team1Sets.map(s => s.name), ...gameState.team2Sets.map(s => s.name)]}
         />
       )}
 
@@ -301,6 +384,22 @@ export default function GamePage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Last asked question display */}
+      {gameState.lastAsk && (
+        <div className="fixed bottom-2 left-1/2 transform -translate-x-1/2 bg-gray-700 text-white px-4 py-2 rounded-md text-sm shadow-lg">
+          Last Question: {gameState.lastAsk.askingPlayerName} asked {gameState.lastAsk.targetPlayerName} for the {formatCardName(gameState.lastAsk.card)}
+        </div>
+      )}
+
+      {/* Declaration Result Modal */}
+      {gameState.lastDeclaration && !dismissedDeclarationIds.includes(gameState.lastDeclaration.id) && (
+        <DeclarationResultModal
+          details={gameState.lastDeclaration}
+          onClose={handleCloseDeclarationResult}
+          formatCardName={formatCardName} 
+        />
       )}
     </div>
   )

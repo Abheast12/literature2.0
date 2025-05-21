@@ -39,6 +39,12 @@ function getAskableSetForClientCard(card: Card): string | null {
   return null;
 }
 
+const cardValueDisplay: Record<string, string> = {
+  "A": "Ace", "K": "King", "Q": "Queen", "J": "Jack", "10": "10",
+  "9": "9", "8": "8", "7": "7", "6": "6", "5": "5", "4": "4", "3": "3", "2": "2",
+  "RJ": "Red Joker", "BJ": "Black Joker"
+};
+
 export default function AskModal({ player, onClose, onAsk, myCards }: AskModalProps) {
   const [selectedAskableSetName, setSelectedAskableSetName] = useState<string>("");
   const [selectedCardToAsk, setSelectedCardToAsk] = useState<Card | null>(null);
@@ -118,11 +124,18 @@ export default function AskModal({ player, onClose, onAsk, myCards }: AskModalPr
               }}
             >
               <option value="">Select a card</option>
-              {askableCardsInSelectedSet.map((card) => (
-                <option key={`${card.set}-${card.value}`} value={`${card.set}-${card.value}`}>
-                  {`${card.value} of ${card.set.charAt(0).toUpperCase() + card.set.slice(1)}`} {/* e.g., Ace of Spades */}
-                </option>
-              ))}
+              {askableCardsInSelectedSet.map((card) => {
+                const displayValue = cardValueDisplay[card.value] || card.value;
+                const displayText = card.set.toLowerCase() === "jokers" 
+                  ? displayValue 
+                  : `${displayValue} of ${card.set.charAt(0).toUpperCase() + card.set.slice(1)}`;
+                
+                return (
+                  <option key={`${card.set}-${card.value}`} value={`${card.set}-${card.value}`}>
+                    {displayText}
+                  </option>
+                );
+              })}
             </select>
           </div>
         )}

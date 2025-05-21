@@ -67,8 +67,8 @@ export default function Card({ card, onClick, selected = false, disabled = false
 
   if (!CardComponent) {
     return (
-      <div 
-        className="w-14 h-[calc(1.4*3.5rem)] bg-gray-300 rounded-md flex items-center justify-center text-xs text-gray-700 shadow-sm"
+      <div
+        className="w-20 h-[calc(1.4*5rem)] bg-gray-300 rounded-md flex items-center justify-center text-xs text-gray-700 shadow-sm"
         title="Unknown Card"
       >
         Error
@@ -78,9 +78,9 @@ export default function Card({ card, onClick, selected = false, disabled = false
 
   return (
     <div
-      className={`w-14 h-[calc(1.4*3.5rem)] rounded-md cursor-pointer transition-all shadow-sm inline-block overflow-hidden ${
+      className={`w-20 h-[calc(1.4*5rem)] rounded-md cursor-pointer transition-all shadow-sm inline-block overflow-hidden ${
         selected ? "ring-4 ring-blue-500 shadow-lg transform -translate-y-1" : ""
-      } ${disabled ? "opacity-60 cursor-default" : "hover:shadow-md"}`}
+      } ${disabled ? "cursor-default" : "hover:shadow-md"}`}
       onClick={disabled ? undefined : onClick}
       title={`${card.value} of ${card.set}`}
     >

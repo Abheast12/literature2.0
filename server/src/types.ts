@@ -32,6 +32,27 @@ export interface GameState {
   team1Sets: Set[]
   team2Sets: Set[]
   turnHistory: string[]
+  lastAsk?: {
+    askingPlayerName: string
+    targetPlayerName: string
+    card: Card
+  }
+  lastDeclaration?: DeclarationPopUpDetails | null
+}
+
+// New interface for the declaration popup details
+export interface DeclarationPopUpDetails {
+  id: string; // Unique ID for this declaration event
+  declaringPlayerName: string;
+  setName: string;
+  isOverallCorrect: boolean;
+  items: Array<{
+    card: Card;
+    declaredPlayerName?: string;
+    actualPlayerName?: string;
+  }>;
+  theoreticalCardsInSet: Card[];
+  awardedToTeam: "team1" | "team2";
 }
 
 // Socket.IO event types
