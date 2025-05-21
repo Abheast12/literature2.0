@@ -9,7 +9,23 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+.font-serif {
+  font-family: "Playfair Display", serif;
+}
+
+.font-card {
+  font-family: "Oswald", sans-serif;
+  font-stretch: condensed;
+}
 
 * {
   box-sizing: border-box;
+}
+/* Custom rotation classes */
+.rotate-15 {
+  transform: rotate(15deg);
+}
+
+.-rotate-15 {
+  transform: rotate(-15deg);
 }

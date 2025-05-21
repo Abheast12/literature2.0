@@ -2,7 +2,12 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        serif: ["Playfair Display", "serif"],
+        card: ["Oswald", "sans-serif"],
+      },
+    },
   },
   plugins: [],
 }

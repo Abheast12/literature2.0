@@ -18,9 +18,9 @@ const DeclarationResultModal: React.FC<DeclarationResultModalProps> = ({ details
       .join(" ");
   };
 
-  const awardedTeamName = awardedToTeam === "team1" ? "Blue Team" : "Red Team";
-  const awardedTeamBgColor = awardedToTeam === "team1" ? "bg-blue-100 border-blue-300" : "bg-red-100 border-red-300";
-  const awardedTeamTextColor = awardedToTeam === "team1" ? "text-blue-700" : "text-red-700";
+  const awardedTeamName = awardedToTeam === "team1" ? "Green Team" : "Red Team";
+  const awardedTeamBgColor = awardedToTeam === "team1" ? "bg-green-100 border-green-300" : "bg-red-100 border-red-300";
+  const awardedTeamTextColor = awardedToTeam === "team1" ? "text-green-700" : "text-red-700";
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
@@ -67,7 +67,7 @@ const DeclarationResultModal: React.FC<DeclarationResultModalProps> = ({ details
 
         <button
           onClick={onClose}
-          className="w-full px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-opacity-75"
+          className="w-full px-4 py-2 bg-[#2c5530] text-white rounded-md hover:bg-[#1e3c20] focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75 font-serif"
         >
           OK
         </button>

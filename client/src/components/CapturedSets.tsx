@@ -7,7 +7,7 @@ interface CapturedSetsProps {
 }
 
 export default function CapturedSets({ sets, teamName, teamId }: CapturedSetsProps) {
-  const teamColor = teamId === "team1" ? "bg-blue-100 border-blue-400" : "bg-red-100 border-red-400"
+  const teamColor = teamId === "team1" ? "bg-green-100 border-green-400" : "bg-red-100 border-red-400"
 
   return (
     <div className={`${teamColor} border-2 rounded-lg p-3 w-32`}>

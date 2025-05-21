@@ -57,7 +57,7 @@ export default function GamePage() {
     }) => {
       setGameState(data.gameState)
       setTimeout(() => {
-        alert(`${data.winner === "team1" ? "Blue Team" : "Red Team"} wins!`)
+        alert(`${data.winner === "team1" ? "Green Team" : "Red Team"} wins!`)
       }, 500)
     }
 
@@ -141,7 +141,7 @@ export default function GamePage() {
   }
 
   if (!gameState) {
-    return <div className="min-h-screen flex items-center justify-center">Loading game...</div>
+    return <div className="min-h-screen flex items-center justify-center bg-gray-100"><span className="text-xl font-serif text-gray-700">Loading game...</span></div>
   }
 
   const currentPlayer = gameState.players.find((p) => p.id === socket.id)
@@ -153,7 +153,7 @@ export default function GamePage() {
     (myTeam === "team1" && gameState.team1Sets.length > gameState.team2Sets.length) ||
     (myTeam === "team2" && gameState.team2Sets.length > gameState.team1Sets.length)
 
-  const BLUE_TEAM_NAME = "Blue Team";
+  const GREEN_TEAM_NAME = "Green Team";
   const RED_TEAM_NAME = "Red Team";
 
   // Sort other players so teammates are 2nd and 4th in the arc
@@ -246,10 +246,10 @@ export default function GamePage() {
   };
 
   return (
-    <div className="min-h-screen bg-emerald-50 flex flex-col items-center justify-center p-4 relative">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative bg-gray-100">
       {/* Turn indicator */}
       <div
-        className={`fixed top-0 left-0 right-0 py-2 text-center text-white font-bold ${isMyTurn ? "bg-emerald-500" : "bg-gray-500"}`}
+        className={`fixed top-0 left-0 right-0 py-2 text-center font-serif font-bold text-white ${isMyTurn ? 'bg-[#2c5530]' : 'bg-gray-600'}`}
       >
         {isMyTurn ? "Your Turn" : `${gameState.currentTurn?.playerName}'s Turn`}
       </div>
@@ -277,7 +277,7 @@ export default function GamePage() {
             <>
               <CapturedSets
                 sets={gameState.team1Sets}
-                teamName={BLUE_TEAM_NAME}
+                teamName={GREEN_TEAM_NAME}
                 teamId="team1"
               />
               <CapturedSets
@@ -295,7 +295,7 @@ export default function GamePage() {
               />
               <CapturedSets
                 sets={gameState.team1Sets}
-                teamName={BLUE_TEAM_NAME}
+                teamName={GREEN_TEAM_NAME}
                 teamId="team1"
               />
             </>
@@ -326,10 +326,10 @@ export default function GamePage() {
           </div>
           {/* Show own name below cards */}
           <div
-            className={`py-2 text-lg font-semibold w-full text-center rounded-b-lg shadow-lg border-2 ${
+            className={`py-2 text-lg font-serif font-semibold w-full text-center rounded-b-lg shadow-lg border-2 ${
               myTeam === "team1"
-                ? "bg-blue-100 border-blue-400 text-black"
-                : "bg-red-100 border-red-400 text-black"
+                ? "bg-green-100 border-green-400 text-gray-800"
+                : "bg-red-100 border-red-400 text-gray-800"
             }`}
           >
             {currentPlayer?.name}
@@ -341,9 +341,9 @@ export default function GamePage() {
       <button
         onClick={() => setDeclareModalOpen(true)}
         disabled={!isMyTurn}
-        className={`fixed bottom-4 right-4 p-3 rounded-full ${
-          isMyTurn ? "bg-yellow-500 hover:bg-yellow-600" : "bg-gray-400"
-        } text-white shadow-lg`}
+        className={`fixed bottom-4 right-4 p-3 rounded-full text-white font-serif shadow-lg ${
+          isMyTurn ? 'bg-[#2c5530] hover:bg-[#224024]' : 'bg-gray-400'
+        }`}
       >
         Declare
       </button>
@@ -371,14 +371,14 @@ export default function GamePage() {
       {/* Game over overlay */}
       {gameEnded && (
         <div className="fixed inset-0 bg-black/70 flex flex-col items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-lg text-center">
-            <h2 className="text-4xl font-bold mb-4">{didIWin ? "You Win!" : "You Lose!"}</h2>
-            <p className="mb-6">
-              {BLUE_TEAM_NAME}: {gameState.team1Sets.length} sets | {RED_TEAM_NAME}: {gameState.team2Sets.length} sets
+          <div className="bg-[#f5f0e1] p-8 rounded-lg text-center shadow-xl">
+            <h2 className="text-4xl font-serif font-bold mb-4 text-[#2c5530]">{didIWin ? "You Win!" : "You Lose!"}</h2>
+            <p className="mb-6 font-serif text-gray-700">
+              {GREEN_TEAM_NAME}: {gameState.team1Sets.length} sets | {RED_TEAM_NAME}: {gameState.team2Sets.length} sets
             </p>
             <button
               onClick={handlePlayAgain}
-              className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md"
+              className="px-6 py-3 bg-[#2c5530] hover:bg-[#1e3c20] text-white rounded-md font-serif"
             >
               Play Again
             </button>
@@ -388,7 +388,7 @@ export default function GamePage() {
 
       {/* Last asked question display */}
       {gameState.lastAsk && (
-        <div className="fixed bottom-2 left-1/2 transform -translate-x-1/2 bg-gray-700 text-white px-4 py-2 rounded-md text-sm shadow-lg">
+        <div className="fixed bottom-2 left-1/2 transform -translate-x-1/2 bg-gray-700/90 text-white px-4 py-2 rounded-md text-sm font-serif shadow-lg">
           Last Question: {gameState.lastAsk.askingPlayerName} asked {gameState.lastAsk.targetPlayerName} for the {formatCardName(gameState.lastAsk.card)}
         </div>
       )}

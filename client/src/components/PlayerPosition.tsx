@@ -25,7 +25,7 @@ export default function PlayerPosition({ player, position, totalPlayers, onClick
   const x = 50 + radius * Math.sin(angle)
   const y = 100 - radius * Math.cos(angle)
 
-  const teamColor = player.team === "team1" ? "bg-blue-100 border-blue-400" : "bg-red-100 border-red-400"
+  const teamColor = player.team === "team1" ? "bg-green-100 border-green-400" : "bg-red-100 border-red-400"
   const activeRing = isActive ? "ring-4 ring-yellow-400" : ""
   const isTeammate = player.team === myTeam
   const nonClickableTeammate = isMyTurn && isTeammate

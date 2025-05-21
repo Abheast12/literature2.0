@@ -130,45 +130,45 @@ export default function LobbyPage() {
   const unassignedPlayers = players.filter(p => p.team === null || p.team === undefined);
 
   return (
-    <div className="min-h-screen bg-sky-50 flex flex-col items-center justify-center p-4">
-      <h1 className="text-4xl font-bold text-sky-500 mb-8">Lobby</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-100 w-full">
+      <h1 className="text-4xl font-serif text-[#6b2b25] mb-8">Lobby</h1>
 
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-semibold">Room: {roomCode}</h2>
-          <button onClick={copyRoomCode} className="text-sky-500 hover:text-sky-600">
+          <h2 className="text-2xl font-serif text-[#6b2b25]">Room: {roomCode}</h2>
+          <button onClick={copyRoomCode} className="text-[#6b2b25] hover:underline font-serif">
             {copied ? "Copied!" : "Copy"}
           </button>
         </div>
 
         <div className="mb-6">
-          <h3 className="text-lg font-medium mb-2 text-center">Players ({players.length}/6)</h3>
+          <h3 className="text-lg font-serif font-medium mb-2 text-center text-[#6b2b25]">Players ({players.length}/6)</h3>
           <div className="grid grid-cols-2 gap-4">
             <div
               className={`p-4 border rounded-lg ${isAdmin ? 'min-h-[200px]' : ''}`}
               onDragOver={isAdmin ? onDragOver : undefined}
               onDrop={isAdmin ? (e) => onDrop(e, "team1") : undefined}
             >
-              <h4 className="text-xl font-semibold mb-3 text-center text-blue-600">Blue Team</h4>
+              <h4 className="text-xl font-serif font-semibold mb-3 text-center text-green-700">Green Team</h4>
               <ul className="space-y-2">
                 {team1Players.map((player) => (
                   <li
                     key={player.id}
                     draggable={isAdmin}
                     onDragStart={isAdmin ? (e) => onDragStart(e, player.id) : undefined}
-                    className={`flex justify-between items-center p-3 bg-blue-50 rounded-md ${isAdmin ? 'cursor-grab' : ''}`}
+                    className={`flex justify-between items-center p-3 bg-green-100 rounded-md ${isAdmin ? 'cursor-grab' : ''}`}
                   >
                     <span>
                       {player.name} {player.isAdmin ? "(Admin)" : ""}
                     </span>
                     {isAdmin && !player.isAdmin && (
-                      <button onClick={() => handleKickPlayer(player.id)} className="text-red-500 hover:text-red-600 text-xs">
+                      <button onClick={() => handleKickPlayer(player.id)} className="text-red-500 hover:text-red-700 text-xs">
                         Kick
                       </button>
                     )}
                   </li>
                 ))}
-                {team1Players.length === 0 && <p className="text-gray-400 text-center">Drag players here</p>}
+                {team1Players.length === 0 && <p className="text-[#6b2b25]/50 text-center font-serif">Drag players here</p>}
               </ul>
             </div>
 
@@ -177,33 +177,33 @@ export default function LobbyPage() {
               onDragOver={isAdmin ? onDragOver : undefined}
               onDrop={isAdmin ? (e) => onDrop(e, "team2") : undefined}
             >
-              <h4 className="text-xl font-semibold mb-3 text-center text-red-600">Red Team</h4>
+              <h4 className="text-xl font-serif font-semibold mb-3 text-center text-red-500">Red Team</h4>
               <ul className="space-y-2">
                 {team2Players.map((player) => (
                   <li
                     key={player.id}
                     draggable={isAdmin}
                     onDragStart={isAdmin ? (e) => onDragStart(e, player.id) : undefined}
-                    className={`flex justify-between items-center p-3 bg-red-50 rounded-md ${isAdmin ? 'cursor-grab' : ''}`}
+                    className={`flex justify-between items-center p-3 bg-red-100 rounded-md ${isAdmin ? 'cursor-grab' : ''}`}
                   >
                     <span>
                       {player.name} {player.isAdmin ? "(Admin)" : ""}
                     </span>
                     {isAdmin && !player.isAdmin && (
-                      <button onClick={() => handleKickPlayer(player.id)} className="text-red-500 hover:text-red-600 text-xs">
+                      <button onClick={() => handleKickPlayer(player.id)} className="text-red-500 hover:text-red-700 text-xs">
                         Kick
                       </button>
                     )}
                   </li>
                 ))}
-                {team2Players.length === 0 && <p className="text-gray-400 text-center">Drag players here</p>}
+                {team2Players.length === 0 && <p className="text-[#6b2b25]/50 text-center font-serif">Drag players here</p>}
               </ul>
             </div>
           </div>
           
           {unassignedPlayers.length > 0 && (
             <div className="mt-4 p-4 border border-dashed rounded-lg">
-              <h4 className="text-lg font-semibold mb-2 text-center text-gray-500">Unassigned Players</h4>
+              <h4 className="text-lg font-serif font-medium mb-2 text-center text-[#6b2b25]/60">Unassigned Players</h4>
               <ul className="space-y-2">
                 {unassignedPlayers.map((player) => (
                   <li
@@ -216,7 +216,7 @@ export default function LobbyPage() {
                       {player.name} {player.isAdmin ? "(Admin)" : ""}
                     </span>
                     {isAdmin && !player.isAdmin && (
-                      <button onClick={() => handleKickPlayer(player.id)} className="text-red-500 hover:text-red-600 text-xs">
+                      <button onClick={() => handleKickPlayer(player.id)} className="text-[#d32f2f] hover:text-[#b71c1c] text-xs">
                         Kick
                       </button>
                     )}
@@ -230,16 +230,14 @@ export default function LobbyPage() {
         {isAdmin && (
           <button
             onClick={handleStartGame}
-            disabled={players.length !== 6}
-            className={`w-full p-3 rounded-md text-white ${
-              players.length === 6 ? "bg-green-500 hover:bg-green-600" : "bg-gray-400 cursor-not-allowed"
-            }`}
+            disabled={players.length < 2 || unassignedPlayers.length > 0 || team1Players.length === 0 || team2Players.length === 0}
+            className="w-full p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-lg font-serif transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            Start Game {players.length !== 6 && `(Need ${6 - players.length} more players)`}
+            Start Game
           </button>
         )}
 
-        {!isAdmin && <div className="text-center text-gray-500">Waiting for admin to start the game...</div>}
+        {!isAdmin && <div className="text-center font-serif text-gray-500">Waiting for admin to start the game...</div>}
       </div>
     </div>
   )
