@@ -7,7 +7,7 @@ export class GameEngine {
   private allDeclaredSetNames: string[] = [
     "spades-low", "spades-high", "hearts-low", "hearts-high",
     "clubs-low", "clubs-high", "diamonds-low", "diamonds-high",
-    "8s_and_jokers"
+    "8s-and-jokers"
   ];
 
   constructor(io: Server<ClientToServerEvents, ServerToClientEvents>) {
@@ -280,7 +280,7 @@ export class GameEngine {
   declareSet(
     roomCode: string,
     declaringPlayerId: string,
-    setName: string, // e.g., "spades-high", "8s_and_jokers"
+    setName: string, // e.g., "spades-high", "8s-and-jokers"
     declarations: Record<string, string[]>, // e.g., { "playerId1": ["9S", "TS"], "playerId2": ["JS", "QS", "KS", "AS"] }
   ): {
     success: boolean
@@ -343,7 +343,7 @@ export class GameEngine {
         const { player, cardValue } = declaredItem;
         
         let matchedTheoreticalCard: Card | undefined = undefined;
-        if (setName === "8s_and_jokers") {
+        if (setName === "8s-and-jokers") {
           matchedTheoreticalCard = theoreticalSetCards.find(tc => tc.value === cardValue);
         } else {
           const suitOfSet = setName.split('-')[0];
@@ -400,11 +400,11 @@ export class GameEngine {
         if (declaredPlayer) {
           const cardValueToMatch = tsCard.value;
           if (declaredCardValues.some(val => {
-            if (setName === "8s_and_jokers") { 
+            if (setName === "8s-and-jokers") { 
                 return val === cardValueToMatch;
             }
             if (val === tsCard.value) {
-                 if (tsCard.set === "jokers" && setName === "8s_and_jokers") return true;
+                 if (tsCard.set === "jokers" && setName === "8s-and-jokers") return true;
                  const suitOfDeclaredSet = setName.split('-')[0];
                  if (tsCard.set === suitOfDeclaredSet) return true;
             }
@@ -617,9 +617,9 @@ export class GameEngine {
 
   // Renamed to getSetCardsDefinition to be clear it returns the theoretical definition of a set
   private getSetCardsDefinition(setName: string): Card[] | null {
-    const [type, rangeOrSuit] = setName.split("-") // e.g. "spades-high" or "8s_and_jokers"
+    const [type, rangeOrSuit] = setName.split("-") // e.g. "spades-high" or "8s-and-jokers"
 
-    if (setName === "8s_and_jokers") {
+    if (setName === "8s-and-jokers") {
       return [
         { set: "spades", value: "8" }, { set: "hearts", value: "8" },
         { set: "clubs", value: "8" }, { set: "diamonds", value: "8" },
