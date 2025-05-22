@@ -20,9 +20,9 @@ A small-scale, in-memory web app for the six-player "Literature" card game.
 1. Clone the repository
 2. Install dependencies:
 
-\`\`\`bash
+```
 npm install
-\`\`\`
+```
 
 This will install dependencies for the root project, client, and server.
 
@@ -30,9 +30,9 @@ This will install dependencies for the root project, client, and server.
 
 To run the development server:
 
-\`\`\`bash
+```
 npm run dev
-\`\`\`
+```
 
 This will start both the client and server in development mode.
 
@@ -43,15 +43,15 @@ This will start both the client and server in development mode.
 
 To build for production:
 
-\`\`\`bash
+```
 npm run build
-\`\`\`
+```
 
 To start the production server:
 
-\`\`\`bash
+```
 npm start
-\`\`\`
+```
 
 ## Game Rules
 
