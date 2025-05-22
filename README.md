@@ -89,7 +89,7 @@ npm start
 
 ## Project Structure
 
-\`\`\`
+```
 /
 ├── client/                # React client
 │   ├── src/
@@ -108,7 +108,8 @@ npm start
 │   │   └── types.ts       # TypeScript types
 │   └── ...
 └── ...
-\`\`\`
+```
+**Update**: This codebase is now hosted at https://playliterature.onrender.com/
 
 ## License
 
